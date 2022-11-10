@@ -1,4 +1,4 @@
-# Rust blue pill learning demo
+# Rust Raspberry Pi Pico Learning Demo
 
 My personal walk through learning Rust development on Raspberry Pi Pico
 

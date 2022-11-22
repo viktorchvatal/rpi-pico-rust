@@ -9,4 +9,5 @@ rustflags = [
     "-C", "no-vectorize-loops",
 ]
 
-runner = "elf2uf2-rs -d"
+# runner = "elf2uf2-rs -d"
+runner = 'gdb-multiarch'

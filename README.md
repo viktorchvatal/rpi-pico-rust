@@ -21,7 +21,7 @@ mass storage interface
 cargo install elf2uf2-rs
 ```
 
-## Getting Started
+## Getting Started with USB loader
 
 The simplest example just transmits a morse code using the onboard LED:
 [demo-blinky](/demo/demo-blinky/src/main.rs)
@@ -36,3 +36,13 @@ USB mass storage mode. In order to do that, it is needed to:
  - after run command, device is disconnected and the program is executed,
    to flash another program version, return to the first step and repeat
 
+## Getting started with Picoprobe
+
+USB loader is quite inconvenient because for every firmware update, it is
+needed to disconnect the USB, push the BOOTSEL putton, connect the USB and
+copy the firmware.
+
+Picoprobe software enables one Rpi Pico to be used as a flasher/debugger for
+another Rpi Pico (so buy at least two pieces).
+
+See [Getting started with Picoprobe](doc/picoprobe.md)

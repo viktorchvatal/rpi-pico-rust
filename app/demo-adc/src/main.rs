@@ -3,8 +3,9 @@
 
 use core::fmt::Write;
 use arrayvec::ArrayString;
-use cortex_m::prelude::_embedded_hal_adc_OneShot;
+use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
 use embedded_hal::digital::v2::OutputPin;
+use hal::Clock;
 use rp_pico::{hal::{self, pac, Sio}, entry};
 
 use panic_halt as _;
@@ -23,7 +24,7 @@ use fugit::{RateExtU32};
 #[entry]
 fn main() -> ! {
     let mut pac = pac::Peripherals::take().unwrap();
-    let _core = pac::CorePeripherals::take().unwrap();
+    let core = pac::CorePeripherals::take().unwrap();
 
     let mut watchdog = hal::Watchdog::new(pac.WATCHDOG);
 
@@ -38,6 +39,8 @@ fn main() -> ! {
     )
     .ok()
     .unwrap();
+
+    let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let sio = Sio::new(pac.SIO);
 
@@ -62,6 +65,7 @@ fn main() -> ! {
         &clocks.peripheral_clock,
     );
 
+    delay.delay_ms(50);
     let interface = I2CDisplayInterface::new(i2c);
 
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
@@ -71,9 +75,9 @@ fn main() -> ! {
     let mut adc_pin = pins.gpio26.into_floating_input();
 
     display.init().unwrap();
-    display.set_brightness(Brightness::BRIGHTEST).unwrap();
 
     loop {
+        display.set_brightness(Brightness::BRIGHTEST).unwrap();
         let adc_value: u16 = adc.read(&mut adc_pin).unwrap();
         display.clear();
 

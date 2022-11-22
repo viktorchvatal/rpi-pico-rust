@@ -15,7 +15,6 @@ use ssd1306::{
 use embedded_graphics::{
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{PrimitiveStyle, Circle},
     mono_font::{MonoTextStyle, ascii::FONT_10X20},
     text::Text
 };

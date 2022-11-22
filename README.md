@@ -23,6 +23,12 @@ cargo install elf2uf2-rs
 
 ## Getting Started with USB loader
 
+Install the `thumbv6m-none-eabi` toolchain
+
+```
+rustup target install thumbv6m-none-eabi
+```
+
 The simplest example just transmits a morse code using the onboard LED:
 [demo-blinky](/demo/demo-blinky/src/main.rs)
 

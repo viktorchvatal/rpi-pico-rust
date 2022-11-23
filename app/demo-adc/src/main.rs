@@ -5,6 +5,7 @@ use core::fmt::Write;
 use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
 use embedded_hal::digital::v2::OutputPin;
+use fixed_queue::VecDeque;
 use hal::Clock;
 use rp_pico::{hal::{self, pac, Sio}, entry};
 
@@ -74,15 +75,24 @@ fn main() -> ! {
     let mut adc = hal::Adc::new(pac.ADC, &mut pac.RESETS);
     let mut adc_pin = pins.gpio26.into_floating_input();
 
+    let mut filter = Filter::<10>::new(0);
+    let mut adc_value = 0;
+
     display.init().unwrap();
 
     loop {
         display.set_brightness(Brightness::BRIGHTEST).unwrap();
-        let adc_value: u16 = adc.read(&mut adc_pin).unwrap();
+
+        if let Some(new_value) = adc.read(&mut adc_pin).ok() {
+            adc_value = new_value;
+            filter.add(new_value);
+        }
+
         display.clear();
 
         let mut text = ArrayString::<50>::new();
-        let _ = write!(&mut text, "ADC demo\n    {}", adc_value);
+        let _ = writeln!(&mut text, "ADC RAW {}", adc_value);
+        let _ = writeln!(&mut text, "Filter  {}", filter.get_average());
 
         let style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
         let position = Point::new(0, 20);
@@ -92,4 +102,36 @@ fn main() -> ! {
         display.flush().unwrap();
         led.set_low().unwrap();
    }
+}
+
+struct Filter<const N: usize> {
+    queue: VecDeque<u16, N>,
+    sum: u32,
+    default: u32
+}
+
+impl<const N: usize> Filter<N> {
+    pub fn new(default: u32) -> Self {
+        Self { queue: VecDeque::new(), sum: 0, default }
+    }
+
+    pub fn add(&mut self, value: u16) {
+        if self.queue.len() == N {
+            if let Some(value) = self.queue.pop_front() {
+                self.sum -= value as u32;
+            }
+        }
+
+        if let Ok(_) = self.queue.push_back(value) {
+            self.sum += value as u32;
+        }
+    }
+
+    pub fn get_average(&self) -> u32 {
+        if self.queue.len() == 0 {
+            self.default
+        } else {
+            self.sum/self.queue.len() as u32
+        }
+    }
 }

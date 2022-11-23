@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-use core::fmt::Write;
+use core::{fmt::Write, cmp::{min, max}};
 use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
 use embedded_hal::digital::v2::OutputPin;
 use fixed_queue::VecDeque;
-use hal::Clock;
+use hal::{Clock};
 use rp_pico::{hal::{self, pac, Sio}, entry};
 
 use panic_halt as _;
@@ -76,6 +76,8 @@ fn main() -> ! {
     let mut adc_pin = pins.gpio26.into_floating_input();
 
     let mut filter = Filter::<10>::new(0);
+    let mut bounds = Bounds::new(10, 25, 4000);
+
     let mut adc_value = 0;
 
     display.init().unwrap();
@@ -90,9 +92,13 @@ fn main() -> ! {
 
         display.clear();
 
+        let filtered = filter.get_average();
+        let bounded = bounds.apply(filtered);
+
         let mut text = ArrayString::<50>::new();
         let _ = writeln!(&mut text, "ADC RAW {}", adc_value);
-        let _ = writeln!(&mut text, "Filter  {}", filter.get_average());
+        let _ = writeln!(&mut text, "Filter  {}", filtered);
+        let _ = writeln!(&mut text, "Bounded {}", bounded);
 
         let style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
         let position = Point::new(0, 20);
@@ -133,5 +139,32 @@ impl<const N: usize> Filter<N> {
         } else {
             self.sum/self.queue.len() as u32
         }
+    }
+}
+
+struct Bounds {
+    value: u32,
+    hard_low: u32,
+    low: u32,
+    high: u32,
+    hard_high: u32,
+    margin: u32,
+}
+
+impl Bounds {
+    pub fn new(margin: u32, hard_low: u32, hard_high: u32) -> Self {
+        Self { low: 0, value: 0, high: 0, margin, hard_low, hard_high }
+    }
+
+    pub fn apply(&mut self, value: u32) -> u32 {
+        let clamped = min(max(value, self.hard_low), self.hard_high);
+
+        if (clamped < self.low) || (clamped > self.high) {
+            self.value = clamped;
+            self.low = clamped.wrapping_sub(self.margin);
+            self.high = clamped.wrapping_add(self.margin);
+        }
+
+        self.value
     }
 }

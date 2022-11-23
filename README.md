@@ -11,6 +11,8 @@ development using following platforms:
 
  - https://crates.io/crates/rp-pico
  - https://reltech.substack.com/p/getting-started-with-rust-on-a-raspberry
+ - [RPi Pico printable pinout](https://drive.google.com/file/d/1v-ktJeAcibXJ5adw5aSTZiJrBMNNmzJk/view)
+ - [Everything about the Raspberry Pi Pico](https://picockpit.com/raspberry-pi/everything-about-the-raspberry-pi-pico/)
 
 ## Prerequisities
 

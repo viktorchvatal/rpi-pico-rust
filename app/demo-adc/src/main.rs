@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-use core::{fmt::Write, cmp::{min, max}};
+use core::{fmt::Write, cmp::{min, max}, sync::atomic::{AtomicU32, Ordering}};
 use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
 use embedded_hal::digital::v2::OutputPin;
 use fixed_queue::VecDeque;
-use hal::{Clock};
+use hal::{Clock, multicore::{Stack, Multicore}, Adc, gpio::{Pin, bank0::Gpio26, Input, Floating}};
 use rp_pico::{hal::{self, pac, Sio}, entry};
 
 use panic_halt as _;
@@ -43,7 +43,7 @@ fn main() -> ! {
 
     let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
-    let sio = Sio::new(pac.SIO);
+    let mut sio = Sio::new(pac.SIO);
 
     let pins = rp_pico::Pins::new(
         pac.IO_BANK0,
@@ -66,39 +66,38 @@ fn main() -> ! {
         &clocks.peripheral_clock,
     );
 
+    let adc = hal::Adc::new(pac.ADC, &mut pac.RESETS);
+    let adc_pin = pins.gpio26.into_floating_input();
+
+    /*
+    let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
+    let cores = mc.cores();
+    let core1 = &mut cores[1];
+    let _test = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
+        adc_loop_on_core1(adc, adc_pin)
+    });
+    */
+
     delay.delay_ms(50);
     let interface = I2CDisplayInterface::new(i2c);
 
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    let mut adc = hal::Adc::new(pac.ADC, &mut pac.RESETS);
-    let mut adc_pin = pins.gpio26.into_floating_input();
-
-    let mut filter = Filter::<10>::new(0);
-    let mut bounds = Bounds::new(10, 25, 4000);
-
-    let mut adc_value = 0;
-
     display.init().unwrap();
+    let mut counter = 0;
 
     loop {
         display.set_brightness(Brightness::BRIGHTEST).unwrap();
 
-        if let Some(new_value) = adc.read(&mut adc_pin).ok() {
-            adc_value = new_value;
-            filter.add(new_value);
-        }
-
-        display.clear();
-
-        let filtered = filter.get_average();
-        let bounded = bounds.apply(filtered);
+        // let adc_value = unsafe { ADC_VALUE.load(Ordering::Relaxed) };
+        // let filtered = unsafe { FILTERED.load(Ordering::Relaxed) };
+        // let bounded = unsafe { BOUNDED.load(Ordering::Relaxed) };
 
         let mut text = ArrayString::<50>::new();
-        let _ = writeln!(&mut text, "ADC RAW {}", adc_value);
-        let _ = writeln!(&mut text, "Filter  {}", filtered);
-        let _ = writeln!(&mut text, "Bounded {}", bounded);
+        let _ = writeln!(&mut text, "ADC RAW {}", counter);
+        // let _ = writeln!(&mut text, "Filter  {}", filtered);
+        // let _ = writeln!(&mut text, "Bounded {}", bounded);
 
         let style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
         let position = Point::new(0, 20);
@@ -107,8 +106,40 @@ fn main() -> ! {
         led.set_high().unwrap();
         display.flush().unwrap();
         led.set_low().unwrap();
+        counter += 1;
    }
 }
+/*
+static mut CORE1_STACK: Stack<4096> = Stack::new();
+static mut ADC_VALUE: AtomicU32 = AtomicU32::new(0);
+static mut FILTERED: AtomicU32 = AtomicU32::new(0);
+static mut BOUNDED: AtomicU32 = AtomicU32::new(0);
+
+fn adc_loop_on_core1(
+    mut adc: Adc,
+    mut adc_pin: Pin<Gpio26, Input<Floating>>
+) -> ! {
+    let mut filter = Filter::<10>::new(0);
+    let mut bounds = Bounds::new(10, 25, 4000);
+    let mut adc_value = 0;
+
+    loop {
+        if let Some(new_value) = adc.read(&mut adc_pin).ok() {
+            adc_value = new_value as u32;
+            filter.add(new_value);
+        }
+
+        let filtered = filter.get_average();
+        let bounded = bounds.apply(filtered);
+
+        unsafe {
+            ADC_VALUE.store(adc_value, Ordering::Relaxed);
+            FILTERED.store(filtered, Ordering::Relaxed);
+            BOUNDED.store(bounded, Ordering::Relaxed);
+        }
+    }
+}
+*/
 
 struct Filter<const N: usize> {
     queue: VecDeque<u16, N>,

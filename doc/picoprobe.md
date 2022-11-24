@@ -1,5 +1,8 @@
 # Getting started with Picoprobe
 
+Picoprobe is a special firmware for Rpi Pico that lets one Rpi Pico operate as
+a programmer/debugger for another Rpi Pico
+
 Main source of information: https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf
 
 ## Build `openocd` version that can handle pico
@@ -101,3 +104,8 @@ step
 ```
 cargo run --release
 ```
+
+## Notes
+
+Programming using Picoprobe is somewhat unsure compared to ST Link for STM
+devices. Program usually flashes and runs successfully on second try.

@@ -58,9 +58,16 @@ fn main() -> ! {
     let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
     let cores = mc.cores();
     let core1 = &mut cores[1];
-    let _spawn_result = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
+
+    let spawn_result = core1.spawn(unsafe { &mut CORE1_STACK.mem }, move || {
         adc_loop_on_core1(adc, adc_pin)
     });
+
+    if let Err(_error) = spawn_result {
+        // Could not start second code, reset the device
+        // This fixed starting up the second core after programming with picoprobe
+        cortex_m::peripheral::SCB::sys_reset();
+    }
 
     let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 

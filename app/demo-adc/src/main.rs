@@ -64,8 +64,8 @@ fn main() -> ! {
     });
 
     if let Err(_error) = spawn_result {
-        // Could not start second code, reset the device
-        // This fixed starting up the second core after programming with picoprobe
+        // Could not start second core, reset the device
+        // This fixed starting up the second core problem after programming with picoprobe
         cortex_m::peripheral::SCB::sys_reset();
     }
 
@@ -99,12 +99,12 @@ fn main() -> ! {
 
         let adc_value = unsafe { ADC_VALUE.load(Ordering::Relaxed) };
         let filtered = unsafe { FILTERED.load(Ordering::Relaxed) };
-        let bounded = unsafe { BOUNDED.load(Ordering::Relaxed) };
+        let bounded = unsafe { NORMALIZED.load(Ordering::Relaxed) };
 
         let mut text = ArrayString::<50>::new();
         let _ = writeln!(&mut text, "ADC RAW {}", adc_value);
         let _ = writeln!(&mut text, "Filter  {}", filtered);
-        let _ = writeln!(&mut text, "Bounded {}", bounded);
+        let _ = writeln!(&mut text, "Norm {}", bounded);
 
         display.clear();
         let style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
@@ -120,29 +120,43 @@ fn main() -> ! {
 
 static mut ADC_VALUE: AtomicU32 = AtomicU32::new(0);
 static mut FILTERED: AtomicU32 = AtomicU32::new(0);
-static mut BOUNDED: AtomicU32 = AtomicU32::new(0);
+static mut NORMALIZED: AtomicU32 = AtomicU32::new(0);
 
 fn adc_loop_on_core1(
     mut adc: Adc,
     mut adc_pin: Pin<Gpio26, Input<Floating>>
 ) -> ! {
-    let mut filter = Filter::<500>::new(0);
-    let mut bounds = Bounds::new(10, 25, 4000);
+    let mut input_filter = Filter::<100>::new(0);
+    let mut filter1 = Filter::<100>::new(0);
+    let mut filter2 = Filter::<100>::new(0);
+
     let mut adc_value = 0;
 
     loop {
         if let Some(new_value) = adc.read(&mut adc_pin).ok() {
             adc_value = new_value as u32;
-            filter.add(new_value);
+            let _ = input_filter.add(new_value);
+            let filtered = input_filter.get_average();
+            let output1 = filter1.add(filtered as u16);
+            let _output2 = filter2.add(output1);
         }
 
-        let filtered = filter.get_average();
-        let bounded = bounds.apply(filtered);
+        let filtered1 = filter1.get_average();
+        let filtered2 = filter2.get_average();
+        let filtered = (filtered1 + filtered2)/2;
+
+        const MIN: u32 = 30;
+        const MAX: u32 = 3900;
+        const NORM_MAX: u32 = 10000;
+
+        let clamped = min(max(filtered, MIN), MAX);
+
+        let normalized = (clamped - MIN)*NORM_MAX/(MAX - MIN);
 
         unsafe {
             ADC_VALUE.store(adc_value, Ordering::Relaxed);
             FILTERED.store(filtered, Ordering::Relaxed);
-            BOUNDED.store(bounded, Ordering::Relaxed);
+            NORMALIZED.store(normalized, Ordering::Relaxed);
         }
     }
 }
@@ -158,16 +172,21 @@ impl<const N: usize> Filter<N> {
         Self { queue: VecDeque::new(), sum: 0, default }
     }
 
-    pub fn add(&mut self, value: u16) {
+    pub fn add(&mut self, value: u16) -> u16 {
+        let mut output = value;
+
         if self.queue.len() == N {
-            if let Some(value) = self.queue.pop_front() {
-                self.sum -= value as u32;
+            if let Some(front) = self.queue.pop_front() {
+                self.sum -= front as u32;
+                output = front;
             }
         }
 
         if let Ok(_) = self.queue.push_back(value) {
             self.sum += value as u32;
         }
+
+        output
     }
 
     pub fn get_average(&self) -> u32 {
@@ -176,32 +195,5 @@ impl<const N: usize> Filter<N> {
         } else {
             self.sum/self.queue.len() as u32
         }
-    }
-}
-
-struct Bounds {
-    value: u32,
-    hard_low: u32,
-    low: u32,
-    high: u32,
-    hard_high: u32,
-    margin: u32,
-}
-
-impl Bounds {
-    pub fn new(margin: u32, hard_low: u32, hard_high: u32) -> Self {
-        Self { low: 0, value: 0, high: 0, margin, hard_low, hard_high }
-    }
-
-    pub fn apply(&mut self, value: u32) -> u32 {
-        let clamped = min(max(value, self.hard_low), self.hard_high);
-
-        if (clamped < self.low) || (clamped > self.high) {
-            self.value = clamped;
-            self.low = clamped.wrapping_sub(self.margin);
-            self.high = clamped.wrapping_add(self.margin);
-        }
-
-        self.value
     }
 }

@@ -5,7 +5,6 @@ use core::{fmt::Write, cmp::{min, max}, sync::atomic::{AtomicU32, Ordering}};
 use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
 use embedded_hal::digital::v2::OutputPin;
-use fixed_queue::VecDeque;
 use hal::{Clock, multicore::{Stack, Multicore}, Adc, gpio::{Pin, bank0::Gpio26, Input, Floating}};
 use rp_pico::{hal::{self, pac, Sio}, entry};
 
@@ -126,31 +125,23 @@ fn adc_loop_on_core1(
     mut adc: Adc,
     mut adc_pin: Pin<Gpio26, Input<Floating>>
 ) -> ! {
-    let mut input_filter = Filter::<100>::new(0);
-    let mut filter1 = Filter::<100>::new(0);
-    let mut filter2 = Filter::<100>::new(0);
+    let mut filter = GeometricFilter::new(0.0001, 0);
 
     let mut adc_value = 0;
 
     loop {
         if let Some(new_value) = adc.read(&mut adc_pin).ok() {
             adc_value = new_value as u32;
-            let _ = input_filter.add(new_value);
-            let filtered = input_filter.get_average();
-            let output1 = filter1.add(filtered as u16);
-            let _output2 = filter2.add(output1);
+            filter.add(new_value);
         }
 
-        let filtered1 = filter1.get_average();
-        let filtered2 = filter2.get_average();
-        let filtered = (filtered1 + filtered2)/2;
+        let filtered = filter.get_average() as u32;
 
         const MIN: u32 = 30;
         const MAX: u32 = 3900;
         const NORM_MAX: u32 = 10000;
 
         let clamped = min(max(filtered, MIN), MAX);
-
         let normalized = (clamped - MIN)*NORM_MAX/(MAX - MIN);
 
         unsafe {
@@ -161,39 +152,31 @@ fn adc_loop_on_core1(
     }
 }
 
-struct Filter<const N: usize> {
-    queue: VecDeque<u16, N>,
-    sum: u32,
-    default: u32
+struct GeometricFilter {
+    value: u32,
+    weight_actual: u32,
+    weight_new: u32
 }
 
-impl<const N: usize> Filter<N> {
-    pub fn new(default: u32) -> Self {
-        Self { queue: VecDeque::new(), sum: 0, default }
+const GEOMETRIC_MULTIPLIER: u32 = u32::MAX;
+
+impl GeometricFilter {
+    pub fn new(weight: f32, value: u16) -> Self {
+        let value = (value as u32) << 16;
+        let weight_new = (GEOMETRIC_MULTIPLIER as f32*weight) as u32;
+        let weight_actual = GEOMETRIC_MULTIPLIER - weight_new;
+
+        Self { value, weight_new, weight_actual }
     }
 
-    pub fn add(&mut self, value: u16) -> u16 {
-        let mut output = value;
-
-        if self.queue.len() == N {
-            if let Some(front) = self.queue.pop_front() {
-                self.sum -= front as u32;
-                output = front;
-            }
-        }
-
-        if let Ok(_) = self.queue.push_back(value) {
-            self.sum += value as u32;
-        }
-
-        output
+    pub fn add(&mut self, value: u16) {
+        let actual_part = self.value as u64*self.weight_actual as u64;
+        let new_part = ((value as u64) << 16)*self.weight_new as u64;
+        let new_value = (actual_part + new_part)/GEOMETRIC_MULTIPLIER as u64;
+        self.value = new_value as u32;
     }
 
-    pub fn get_average(&self) -> u32 {
-        if self.queue.len() == 0 {
-            self.default
-        } else {
-            self.sum/self.queue.len() as u32
-        }
+    pub fn get_average(&self) -> u16 {
+        (self.value >> 16) as u16
     }
 }

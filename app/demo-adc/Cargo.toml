@@ -13,7 +13,6 @@ cortex-m-rt = "0.7"
 ssd1306 = "0.7.1"
 embedded-graphics = "0.7.1"
 fugit = "0.3.6"
-fixed-queue = "0.5.1"
 
 [dependencies.arrayvec]
 version = "0.7.2"

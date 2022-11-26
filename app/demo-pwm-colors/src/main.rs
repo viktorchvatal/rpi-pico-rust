@@ -91,7 +91,7 @@ fn main() -> ! {
     let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
         .into_buffered_graphics_mode();
 
-    display.init().unwrap();
+    let _ = display.init();
 
     // Initialize PWM, only certain channel and pic combinations are valid,
     // refer to RP2040 datasheet (1.4.3. GPIO Functions) for details
@@ -115,7 +115,7 @@ fn main() -> ! {
 
     loop {
         led.set_high().unwrap();
-        display.set_brightness(Brightness::BRIGHTEST).unwrap();
+        let _ = display.set_brightness(Brightness::BRIGHTEST);
 
         let normalized = unsafe { NORMALIZED.load(Ordering::Relaxed) };
 
@@ -137,7 +137,7 @@ fn main() -> ! {
         render_bar(&mut display, "B", 45, b).unwrap();
         led.set_low().unwrap();
 
-        display.flush().unwrap();
+        let _ = display.flush();
    }
 }
 

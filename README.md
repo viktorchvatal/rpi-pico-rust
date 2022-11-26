@@ -1,11 +1,11 @@
 # Rust Raspberry Pi Pico Learning Demo
 
-My personal walk through learning Rust development on Raspberry Pi Pico
+My personal walk through learning Rust development on Raspberry Pi Pico, featuring
+ - dual code ARM Cortex M0+ microcontroller
+ - 264K internal RAM and 2MB onboard flash
+ - $4 price ($6 for WiFi version)
 
-Before switching to Raspberry Pico, I also learned basics of Rust ARM embedded
-development using following platforms:
- - Programming Blue Pill development board with STM32F103 microcontroller:
-   https://github.com/viktorchvatal/blue-pill-rust
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/boards/rpi-pico-board.jpg)
 
 ## Userful Resources
 
@@ -14,43 +14,36 @@ development using following platforms:
  - [RPi Pico printable pinout](https://drive.google.com/file/d/1v-ktJeAcibXJ5adw5aSTZiJrBMNNmzJk/view)
  - [Everything about the Raspberry Pi Pico](https://picockpit.com/raspberry-pi/everything-about-the-raspberry-pi-pico/)
 
-## Prerequisities
+## Other Boards
 
-Install `elf2uf2-rs` tool used to flash program directly using the USB
-mass storage interface
+Many experiments with simple hardware, display and sensors can be found in the
+[blue-pill-rust repository](https://github.com/viktorchvatal/blue-pill-rust).
+Due to the rust `embedded_hal` abstraction, they can be simply modified to run
+on RPi Pico as well. Blue pill is a low cost board featuring STM32F103C8
+microcontroller with 20K RAM and 64K flash.
 
-```
-cargo install elf2uf2-rs
-```
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/boards/blue-pill-board-small.jpg)
+
+More examples can be found in the [black-pill-rust repository](https://github.com/viktorchvatal/black-pill-rust) with examples for more powerfull STM32F411CEU6 microcontroller
+with 128K RAM and 512K flash.
+
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/boards/black-pill-board-small.jpg)
 
 ## Getting Started with USB loader
 
-Install the `thumbv6m-none-eabi` toolchain
+[Programming via USB](doc/usb-loader.md) - the easiest way to flash a program just by connecting
+RPI Pico to a USB port with BOOTSEL button active
 
-```
-rustup target install thumbv6m-none-eabi
-```
-
-The simplest example just transmits a morse code using the onboard LED:
-[demo-blinky](/demo/demo-blinky/src/main.rs)
-
-RP2040 chip contains onboard firmware that allows to flash program in the
-USB mass storage mode. In order to do that, it is needed to:
-
- - connect the Rpi Pico to the USB while BOOTSEL button is active
- - mount the RPI-RP2 device
- - enable the `runner = "elf2uf2-rs -d"` runner in `.cargo/config`
- - run `cargo run` to flash and run the program
- - after run command, device is disconnected and the program is executed,
-   to flash another program version, return to the first step and repeat
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/blinky/blinky-small.gif)
 
 ## Getting started with Picoprobe
 
-USB loader is quite inconvenient because for every firmware update, it is
-needed to disconnect the USB, push the BOOTSEL putton, connect the USB and
-copy the firmware.
+[Getting started with Picoprobe](doc/picoprobe.md) - flashing and debugging Pico using another Pico
 
-Picoprobe software enables one Rpi Pico to be used as a flasher/debugger for
-another Rpi Pico (so buy at least two pieces).
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/picoprobe/rpi-picoprobe-small.jpg)
 
-See [Getting started with Picoprobe](doc/picoprobe.md)
+## SSD1306 OLED I2C Display [TODO]
+
+[Connecting a small OLED display via i2c bus](display-ssd1306.md)
+
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/display-ssd1306/display-ssd1306-small.gif)

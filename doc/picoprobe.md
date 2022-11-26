@@ -1,9 +1,13 @@
 # Getting started with Picoprobe
 
-Picoprobe is a special firmware for Rpi Pico that lets one Rpi Pico operate as
-a programmer/debugger for another Rpi Pico
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/picoprobe/rpi-picoprobe.jpg)
 
-Main source of information: https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf
+USB loader is quite inconvenient because for every firmware update, it is
+needed to disconnect the USB, push the BOOTSEL putton, connect the USB and
+copy the firmware.
+
+Picoprobe software enables one Rpi Pico to be used as a flasher/debugger for
+another Rpi Pico (so buy at least two pieces).
 
 ## Build `openocd` version that can handle pico
 
@@ -109,3 +113,5 @@ cargo run --release
 
 Programming using Picoprobe is somewhat unsure compared to ST Link for STM
 devices. Program usually flashes and runs successfully on second try.
+
+More information can be found in the official documentation here: https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf

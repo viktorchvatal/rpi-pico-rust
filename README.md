@@ -4,6 +4,8 @@ My personal walk through learning Rust development on Raspberry Pi Pico, featuri
  - dual code ARM Cortex M0+ microcontroller
  - 264K internal RAM and 2MB onboard flash
  - $4 price ($6 for WiFi version)
+ - **Pros:** Cheap, good quality, breadboard-friendly, lots of RAM and Flash space, two cores
+ - **Cons:** Some features are not supported in Rust (yet)
 
 ![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/boards/rpi-pico-board.jpg)
 

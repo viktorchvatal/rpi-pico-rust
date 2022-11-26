@@ -44,6 +44,6 @@ RPI Pico to a USB port with BOOTSEL button active
 
 ## SSD1306 OLED I2C Display [TODO]
 
-[Connecting a small OLED display via i2c bus](display-ssd1306.md)
+[Connecting a small OLED display via i2c bus](doc/display-ssd1306.md)
 
 ![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/display-ssd1306/display-ssd1306-small.gif)

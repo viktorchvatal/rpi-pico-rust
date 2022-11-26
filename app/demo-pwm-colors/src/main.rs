@@ -121,7 +121,7 @@ fn main() -> ! {
 
         let input = normalized as f32;
         let max_log_val = (MAX_VALUE as f32).ln();
-        let r = minf(input/8000.0 + 7.0, max_log_val).exp() as u16;
+        let r = max(1500, minf(input/8000.0 + 7.0, max_log_val).exp() as u16);
         let g = minf(input/8000.0 + 5.0, max_log_val).exp() as u16;
         let b = minf(input/8000.0 + 3.0, max_log_val).exp() as u16;
 
@@ -144,6 +144,7 @@ fn main() -> ! {
 fn minf(a: f32, b: f32) -> f32 {
     if a < b { a } else { b }
 }
+
 
 fn render_bar<T, E>(
     display: &mut T,

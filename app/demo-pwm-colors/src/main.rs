@@ -1,11 +1,13 @@
 #![no_std]
 #![no_main]
 
-use core::{cmp::{min, max}, sync::atomic::{AtomicU32, Ordering}};
+use core::{cmp::{min, max}, sync::atomic::{AtomicU32, Ordering}, fmt::Write};
+use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::{digital::v2::OutputPin, PwmPin};
 use hal::{Clock, multicore::{Stack, Multicore}, Adc, gpio::{Pin, bank0::Gpio26, Input, Floating}};
 use rp_pico::{hal::{self, pac, Sio}, entry};
+use micromath::F32Ext;
 
 use panic_halt as _;
 use ssd1306::{
@@ -91,40 +93,71 @@ fn main() -> ! {
 
     display.init().unwrap();
 
+    // Initialize PWM, only certain channel and pic combinations are valid,
+    // refer to RP2040 datasheet (1.4.3. GPIO Functions) for details
+    let mut pwm_slices = hal::pwm::Slices::new(pac.PWM, &mut pac.RESETS);
+
+    let pwm6 = &mut pwm_slices.pwm6;
+    pwm6.set_ph_correct();
+    pwm6.enable();
+
+    let pwm7 = &mut pwm_slices.pwm7;
+    pwm7.set_ph_correct();
+    pwm7.enable();
+
+    let channel_r = &mut pwm6.channel_b;
+    let channel_g = &mut pwm7.channel_a;
+    let channel_b = &mut pwm7.channel_b;
+
+    channel_r.output_to(pins.gpio13);
+    channel_g.output_to(pins.gpio14);
+    channel_b.output_to(pins.gpio15);
+
     loop {
         led.set_high().unwrap();
         display.set_brightness(Brightness::BRIGHTEST).unwrap();
 
         let normalized = unsafe { NORMALIZED.load(Ordering::Relaxed) };
-        let r = 0;
-        let g = 0;
-        let b = 0;
+
+        let input = normalized as f32;
+        let max_log_val = (MAX_VALUE as f32).ln();
+        let r = minf(input/8000.0 + 7.0, max_log_val).exp() as u16;
+        let g = minf(input/8000.0 + 5.0, max_log_val).exp() as u16;
+        let b = minf(input/8000.0 + 3.0, max_log_val).exp() as u16;
+
+        channel_r.set_duty(r);
+        channel_g.set_duty(g);
+        channel_b.set_duty(b);
 
         display.clear();
 
-        render_bar(&mut display, "I:", 1, normalized).unwrap();
-        render_bar(&mut display, "R:", 15, r).unwrap();
-        render_bar(&mut display, "G:", 30, g).unwrap();
-        render_bar(&mut display, "B:", 45, b).unwrap();
+        render_bar(&mut display, "I", 1, normalized as u16).unwrap();
+        render_bar(&mut display, "R", 15, r).unwrap();
+        render_bar(&mut display, "G", 30, g).unwrap();
+        render_bar(&mut display, "B", 45, b).unwrap();
         led.set_low().unwrap();
 
         display.flush().unwrap();
    }
 }
 
+fn minf(a: f32, b: f32) -> f32 {
+    if a < b { a } else { b }
+}
+
 fn render_bar<T, E>(
     display: &mut T,
     name: &str,
     top: i32,
-    value: u32
+    value: u16
 ) -> Result<(), ()>
 where T: DrawTarget<Color = BinaryColor, Error = E> {
-    let position = Point { x: 20, y: top };
-    const SIZE: Size = Size { width: 106, height: 10 };
+    let position = Point { x: 70, y: top };
+    const SIZE: Size = Size { width: 56, height: 10 };
 
     let filled_size = Size {
         height: SIZE.height,
-        width: SIZE.width*value/MAX_VALUE
+        width: SIZE.width*value as u32/MAX_VALUE
     };
 
     let outline_style = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
@@ -141,7 +174,9 @@ where T: DrawTarget<Color = BinaryColor, Error = E> {
         .map_err(|_| ())?;
 
     let style = MonoTextStyle::new(&FONT_7X13_BOLD, BinaryColor::On);
-    Text::new(&name, Point::new(1, top + 8), style).draw(display).map_err(|_| ())?;
+    let mut text = ArrayString::<15>::new();
+    let _ = write!(&mut text, "{}: {:5}", name, value);
+    Text::new(&text, Point::new(1, top + 8), style).draw(display).map_err(|_| ())?;
 
     Ok(())
 }
@@ -149,7 +184,7 @@ where T: DrawTarget<Color = BinaryColor, Error = E> {
 static mut ADC_VALUE: AtomicU32 = AtomicU32::new(0);
 static mut NORMALIZED: AtomicU32 = AtomicU32::new(0);
 
-const MAX_VALUE: u32 = 10000;
+const MAX_VALUE: u32 = u16::MAX as u32;
 
 fn adc_loop_on_core1(
     mut adc: Adc,
@@ -168,7 +203,7 @@ fn adc_loop_on_core1(
         let filtered = filter.get_average() as u32;
 
         const MIN: u32 = 40;
-        const MAX: u32 = 3900;
+        const MAX: u32 = 3700;
 
         let clamped = min(max(filtered, MIN), MAX);
         let normalized = (clamped - MIN)*MAX_VALUE/(MAX - MIN);

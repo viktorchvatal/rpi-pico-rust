@@ -42,8 +42,14 @@ RPI Pico to a USB port with BOOTSEL button active
 
 ![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/picoprobe/rpi-picoprobe-small.jpg)
 
-## SSD1306 OLED I2C Display [TODO]
+## SSD1306 OLED I2C Display
 
 [Connecting a small OLED display via i2c bus](doc/display-ssd1306.md)
 
 ![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/display-ssd1306/display-ssd1306-small.gif)
+
+## Analog to digital converter and multicore
+
+[On board ADC and multicore example](doc/adc-multicore.md)
+
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/adc/adc-small.gif)

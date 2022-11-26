@@ -17,7 +17,7 @@ use embedded_graphics::{
     pixelcolor::BinaryColor,
     prelude::*,
     mono_font::{MonoTextStyle, ascii::FONT_10X20},
-    text::Text
+    text::Text, primitives::{Rectangle, PrimitiveStyle},
 };
 use fugit::{RateExtU32};
 
@@ -97,29 +97,57 @@ fn main() -> ! {
         display.set_brightness(Brightness::BRIGHTEST).unwrap();
 
         let adc_value = unsafe { ADC_VALUE.load(Ordering::Relaxed) };
-        let filtered = unsafe { FILTERED.load(Ordering::Relaxed) };
-        let bounded = unsafe { NORMALIZED.load(Ordering::Relaxed) };
+        let normalized = unsafe { NORMALIZED.load(Ordering::Relaxed) };
 
         let mut text = ArrayString::<50>::new();
         let _ = writeln!(&mut text, "ADC RAW {}", adc_value);
-        let _ = writeln!(&mut text, "Filter  {}", filtered);
-        let _ = writeln!(&mut text, "Norm {}", bounded);
+        let _ = writeln!(&mut text, "Norm {}", normalized);
 
         display.clear();
+
         let style = MonoTextStyle::new(&FONT_10X20, BinaryColor::On);
         let position = Point::new(0, 20);
         Text::new(&text, position, style).draw(&mut display).unwrap();
-
-        display.flush().unwrap();
+        render_bar(&mut display, normalized).unwrap();
         led.set_low().unwrap();
 
-        delay.delay_ms(50);
+        display.flush().unwrap();
    }
 }
 
+fn render_bar<T, E>(
+    display: &mut T,
+    value: u32
+) -> Result<(), ()>
+where T: DrawTarget<Color = BinaryColor, Error = E> {
+    const POSITION: Point = Point { x: 1, y: 48 };
+    const SIZE: Size = Size { width: 126, height: 15 };
+
+    let filled_size = Size {
+        height: SIZE.height,
+        width: SIZE.width*value/MAX_VALUE
+    };
+
+    let outline_style = PrimitiveStyle::with_stroke(BinaryColor::On, 1);
+    let filled_style = PrimitiveStyle::with_fill(BinaryColor::On);
+
+    Rectangle::new(POSITION, SIZE)
+        .into_styled(outline_style)
+        .draw(display)
+        .map_err(|_| ())?;
+
+    Rectangle::new(POSITION, filled_size)
+        .into_styled(filled_style)
+        .draw(display)
+        .map_err(|_| ())?;
+
+    Ok(())
+}
+
 static mut ADC_VALUE: AtomicU32 = AtomicU32::new(0);
-static mut FILTERED: AtomicU32 = AtomicU32::new(0);
 static mut NORMALIZED: AtomicU32 = AtomicU32::new(0);
+
+const MAX_VALUE: u32 = 10000;
 
 fn adc_loop_on_core1(
     mut adc: Adc,
@@ -137,16 +165,14 @@ fn adc_loop_on_core1(
 
         let filtered = filter.get_average() as u32;
 
-        const MIN: u32 = 30;
+        const MIN: u32 = 40;
         const MAX: u32 = 3900;
-        const NORM_MAX: u32 = 10000;
 
         let clamped = min(max(filtered, MIN), MAX);
-        let normalized = (clamped - MIN)*NORM_MAX/(MAX - MIN);
+        let normalized = (clamped - MIN)*MAX_VALUE/(MAX - MIN);
 
         unsafe {
             ADC_VALUE.store(adc_value, Ordering::Relaxed);
-            FILTERED.store(filtered, Ordering::Relaxed);
             NORMALIZED.store(normalized, Ordering::Relaxed);
         }
     }

@@ -55,3 +55,9 @@ RPI Pico to a USB port with BOOTSEL button active
 [On board ADC and multicore example](doc/adc-multicore.md)
 
 ![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/adc/adc-small.gif)
+
+## PWM driven colored LEDs
+
+[3 channel PWM example](doc/pwm-colors.md)
+
+![stlink v2 photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/pwm-colors/pwm-colors-small.gif)

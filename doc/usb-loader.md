@@ -35,3 +35,8 @@ USB mass storage mode. In order to do that, it is needed to:
 
 In order to flash programs more easily or to use a debugger, it is needed
 to setup a [picoprobe](picoprobe.md)
+
+## Notes
+
+To resolve errors with `#![no_std]` and `rust_analyzer` in `vscode`, set
+`"rust-analyzer.check.allTargets": false,`

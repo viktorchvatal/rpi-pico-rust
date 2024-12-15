@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::OutputPin;
 use rp_pico::{hal::{self, pac, Sio}, entry};
 
 use panic_halt as _;
@@ -48,8 +48,8 @@ fn main() -> ! {
 
     let mut led = pins.led.into_push_pull_output();
 
-    let sda_pin = pins.gpio16.into_mode::<hal::gpio::FunctionI2C>();
-    let scl_pin = pins.gpio17.into_mode::<hal::gpio::FunctionI2C>();
+    let sda_pin: hal::gpio::Pin<_, hal::gpio::FunctionI2C, _> = pins.gpio16.reconfigure();
+    let scl_pin: hal::gpio::Pin<_, hal::gpio::FunctionI2C, _> = pins.gpio17.reconfigure();
 
     let i2c = hal::I2C::i2c0(
         pac.I2C0,

@@ -1,11 +1,13 @@
 #![no_std]
 #![no_main]
 
+use embedded_hal::pwm::SetDutyCycle;
 use core::{cmp::{min, max}, sync::atomic::{AtomicU32, Ordering}, fmt::Write};
 use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
-use embedded_hal::{digital::v2::OutputPin, PwmPin};
-use hal::{Clock, multicore::{Stack, Multicore}, Adc, gpio::{Pin, bank0::Gpio26, Input, Floating}};
+use embedded_hal::digital::OutputPin;
+use hal::{Clock, multicore::{Stack, Multicore}, Adc, gpio::{Pin, bank0::Gpio26}};
+use rp2040_hal::{adc::AdcPin, gpio::{FunctionSio, PullNone, SioInput}};
 use rp_pico::{hal::{self, pac, Sio}, entry};
 use micromath::F32Ext;
 
@@ -20,7 +22,7 @@ use embedded_graphics::{
     mono_font::{MonoTextStyle, ascii::FONT_7X13_BOLD},
     text::Text, primitives::{Rectangle, PrimitiveStyle},
 };
-use fugit::{RateExtU32};
+use fugit::RateExtU32;
 
 static mut CORE1_STACK: Stack<4096> = Stack::new();
 
@@ -53,7 +55,7 @@ fn main() -> ! {
     );
 
     let adc = hal::Adc::new(pac.ADC, &mut pac.RESETS);
-    let adc_pin = pins.gpio26.into_floating_input();
+    let adc_pin = AdcPin::new(pins.gpio26.into_floating_input()).unwrap();
 
     let mut mc = Multicore::new(&mut pac.PSM, &mut pac.PPB, &mut sio.fifo);
     let cores = mc.cores();
@@ -73,8 +75,8 @@ fn main() -> ! {
 
     let mut led = pins.led.into_push_pull_output();
 
-    let sda_pin = pins.gpio16.into_mode::<hal::gpio::FunctionI2C>();
-    let scl_pin = pins.gpio17.into_mode::<hal::gpio::FunctionI2C>();
+    let sda_pin: hal::gpio::Pin<_, hal::gpio::FunctionI2C, _> = pins.gpio16.reconfigure();
+    let scl_pin: hal::gpio::Pin<_, hal::gpio::FunctionI2C, _> = pins.gpio17.reconfigure();
 
     let i2c = hal::I2C::i2c0(
         pac.I2C0,
@@ -125,11 +127,11 @@ fn main() -> ! {
         let g = minf(input/8000.0 + 5.0, max_log_val).exp() as u16;
         let b = minf(input/8000.0 + 3.0, max_log_val).exp() as u16;
 
-        channel_r.set_duty(r);
-        channel_g.set_duty(g);
-        channel_b.set_duty(b);
+        let _ = channel_r.set_duty_cycle(r);
+        let _ = channel_g.set_duty_cycle(g);
+        let _ = channel_b.set_duty_cycle(b);
 
-        display.clear();
+        let _ = display.clear(BinaryColor::Off);
 
         render_bar(&mut display, "I", 1, normalized as u16).unwrap();
         render_bar(&mut display, "R", 15, r).unwrap();
@@ -189,7 +191,7 @@ const MAX_VALUE: u32 = u16::MAX as u32;
 
 fn adc_loop_on_core1(
     mut adc: Adc,
-    mut adc_pin: Pin<Gpio26, Input<Floating>>
+    mut adc_pin: AdcPin<Pin<Gpio26, FunctionSio<SioInput>, PullNone>>
 ) -> ! {
     let mut filter = GeometricFilter::new(0.0001, 0);
 

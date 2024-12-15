@@ -72,7 +72,7 @@ fn main() -> ! {
     let mut size_2 = 0;
 
     loop {
-        display.clear();
+        let _ = display.clear(BinaryColor::Off);
 
         let origin = Point::new(1, 1);
         let style = PrimitiveStyle::with_stroke(BinaryColor::On, 3);

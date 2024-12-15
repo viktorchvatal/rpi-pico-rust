@@ -20,7 +20,8 @@ sudo apt install automake autoconf build-essential texinfo libtool libftdi-dev l
 git clone https://github.com/raspberrypi/openocd.git --branch rp2040 --depth=1 --no-single-branch
 cd openocd
 ./bootstrap
-./configure --enable-picoprobe make -j10
+./configure --enable-picoprobe
+make -j10
 ```
 
 If you wish to install (not needed)
@@ -55,6 +56,7 @@ ATTRS{idVendor}=="2e8a", ATTRS{idProduct}=="0004", MODE:="0666"
 Apply the rules
 
 ```
+$ sudo udevadm control --reload-rules
 $ sudo udevadm trigger
 ```
 

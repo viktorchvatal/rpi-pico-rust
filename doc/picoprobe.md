@@ -88,13 +88,18 @@ Info : Listening on port 3333 for gdb connections
 
 ## Running a program using openocd
 
-1. Open `.cargo/config` and set GDB as runner
+1. Install `gdb-multiarch` if not installed
+
+```
+```
+
+2. Open `.cargo/config` and set GDB as runner
 
 ```
 runner = 'gdb-multiarch'
 ```
 
-2. Create `.gdbinit` in the application crate directory and insert
+3. Create `.gdbinit` in the application crate directory and insert
 
 ```
 target remote :3333
@@ -105,11 +110,15 @@ load
 step
 ```
 
-3. Run the application
+4. Run the application
 
 ```
 cargo run --release
 ```
+
+Note: In case of `warning: File ".../.gdbinit" auto-loading has been declined,
+follow instructions to add `set auto-load safe-path /path/to/gdbinit`
+into `~/.config/gdb/gdbinit`
 
 ## Notes
 

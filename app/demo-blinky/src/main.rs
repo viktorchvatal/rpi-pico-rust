@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::OutputPin;
 use rp_pico::{hal::{self, prelude::*, pac, Sio}, entry};
 use cortex_m::delay::Delay;
 
@@ -38,7 +38,8 @@ fn main() -> ! {
 
     let mut led = pins.led.into_push_pull_output();
 
-    let message = ".... . .-.. .-.. ---    ";
+    //let message = ".... . .-.. .-.. ---    ";
+    let message = "...-";
 
     // Transmit the message using the onboard LED
     loop {

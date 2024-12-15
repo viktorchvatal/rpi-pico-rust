@@ -4,7 +4,7 @@
 use core::{fmt::Write, cmp::{min, max}, sync::atomic::{AtomicU32, Ordering}};
 use arrayvec::ArrayString;
 use cortex_m::{prelude::_embedded_hal_adc_OneShot, delay::Delay};
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::OutputPin;
 use hal::{Clock, multicore::{Stack, Multicore}, Adc, gpio::{Pin, bank0::Gpio26, Input, Floating}};
 use rp_pico::{hal::{self, pac, Sio}, entry};
 

@@ -3,6 +3,7 @@
 
 mod spi_wrapper;
 
+use arrayvec::ArrayString;
 use cortex_m::delay::Delay;
 use display_interface_spi::SPIInterface;
 use embedded_graphics::{
@@ -16,6 +17,7 @@ use embedded_graphics::{
 use embedded_hal::{digital::OutputPin, spi::{Mode, Phase, Polarity}};
 use spi_wrapper::SpiWrapper;
 use rp_pico::{hal::{self, pac, Sio, Clock, Timer}, entry};
+use core::fmt::Write;
 
 use panic_halt as _;
 
@@ -92,8 +94,7 @@ fn main() -> ! {
     let font_fg = MonoTextStyle::new(&FONT_7X13_BOLD, Rgb565::YELLOW);
     let font_bg = MonoTextStyle::new(&FONT_7X13_BOLD, Rgb565::CSS_DARK_BLUE);
 
-    let mut x = 0i32;
-    let mut y = 0i32;
+    let mut counter = 0i32;
 
     let bg_style = PrimitiveStyleBuilder::new()
         .fill_color(Rgb565::CSS_DARK_RED)
@@ -107,9 +108,20 @@ fn main() -> ! {
     let text = "ILI9341\nTFT Display\nExample";
 
     loop {
-        let position = Point::new(x % 220, y % 300);
+        let mut iter_text = ArrayString::<10>::new();
+        let _ = writeln!(&mut iter_text, "{}", counter);
+
+        let position = Point::new(counter % 220, counter % 300);
 
         Text::with_alignment(text, position, font_fg, Alignment::Left)
+            .draw(&mut lcd)
+            .unwrap();
+
+        Rectangle::new(Point::zero(), Size::new(100, 20)).into_styled(bg_style)
+            .draw(&mut lcd)
+            .unwrap();
+
+        Text::with_alignment(&iter_text, Point::new(0, 12), font_fg, Alignment::Left)
             .draw(&mut lcd)
             .unwrap();
 
@@ -121,7 +133,6 @@ fn main() -> ! {
             .draw(&mut lcd)
             .unwrap();
 
-        x += 1;
-        y += 1;
+        counter += 1;
     }
 }

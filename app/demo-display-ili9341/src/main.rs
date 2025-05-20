@@ -9,7 +9,7 @@ use display_interface_spi::SPIInterface;
 use embedded_graphics::{
     mono_font::{ascii::FONT_7X13_BOLD, MonoTextStyle},
     pixelcolor::Rgb565,
-    prelude::{Point, Primitive, RgbColor, Size, WebColors},
+    prelude::{IntoStorage, Point, Primitive, RgbColor, Size, WebColors},
     primitives::{PrimitiveStyleBuilder, Rectangle},
     text::{Alignment, Text},
     Drawable
@@ -23,6 +23,7 @@ use panic_halt as _;
 
 use ili9341::{DisplaySize240x320, Ili9341, Orientation};
 use fugit::RateExtU32;
+use embedded_graphics_framebuf::FrameBuf;
 
 #[entry]
 fn main() -> ! {
@@ -90,6 +91,8 @@ fn main() -> ! {
     )
     .unwrap();
 
+    let mut data = [Rgb565::CSS_DARK_BLUE; 240 * 320];
+
     // Create a new character style
     let font_fg = MonoTextStyle::new(&FONT_7X13_BOLD, Rgb565::YELLOW);
     let font_bg = MonoTextStyle::new(&FONT_7X13_BOLD, Rgb565::CSS_DARK_BLUE);
@@ -108,31 +111,36 @@ fn main() -> ! {
     let text = "ILI9341\nTFT Display\nExample";
 
     loop {
-        let mut iter_text = ArrayString::<10>::new();
-        let _ = writeln!(&mut iter_text, "{}", counter);
+        {
+            let mut buffer = FrameBuf::new(&mut data, 240, 320);
+            let mut iter_text = ArrayString::<10>::new();
+            let _ = writeln!(&mut iter_text, "{}", counter);
 
-        let position = Point::new(counter % 220, counter % 300);
+            let old_position = Point::new(counter % 220, counter % 300);
 
-        Text::with_alignment(text, position, font_fg, Alignment::Left)
-            .draw(&mut lcd)
-            .unwrap();
+            Text::with_alignment(text, old_position, font_bg, Alignment::Left)
+            .draw(&mut buffer)
+                .unwrap();
 
-        Rectangle::new(Point::zero(), Size::new(100, 20)).into_styled(bg_style)
-            .draw(&mut lcd)
-            .unwrap();
+            counter += 1;
 
-        Text::with_alignment(&iter_text, Point::new(0, 12), font_fg, Alignment::Left)
-            .draw(&mut lcd)
-            .unwrap();
+            let position = Point::new(counter % 220, counter % 300);
 
-        led.set_low().unwrap();
-        delay.delay_ms(10);
+            Text::with_alignment(text, position, font_fg, Alignment::Left)
+                .draw(&mut buffer)
+                .unwrap();
+
+            Rectangle::new(Point::zero(), Size::new(100, 20)).into_styled(bg_style)
+                .draw(&mut buffer)
+                .unwrap();
+
+            Text::with_alignment(&iter_text, Point::new(0, 12), font_fg, Alignment::Left)
+                .draw(&mut buffer)
+                .unwrap();
+        }
+
         led.set_high().unwrap();
-
-        Text::with_alignment(text, position, font_bg, Alignment::Left)
-            .draw(&mut lcd)
-            .unwrap();
-
-        counter += 1;
+        lcd.draw_raw_iter(0, 0, 240, 320, data.iter().map(|data| data.into_storage())).unwrap();
+        led.set_low().unwrap();
     }
 }

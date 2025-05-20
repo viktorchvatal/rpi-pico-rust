@@ -6,6 +6,12 @@ pub struct SpiWrapper<S: SpiBus> {
     pub bus: S,
 }
 
+impl<S: SpiBus> SpiWrapper<S> {
+    fn release(self) -> S {
+        self.bus
+    }
+}
+
 impl<S: SpiBus> ErrorType for SpiWrapper<S> { type Error = S::Error; }
 
 impl<S: SpiBus> SpiDevice for SpiWrapper<S> {

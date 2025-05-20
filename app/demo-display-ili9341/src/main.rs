@@ -2,9 +2,11 @@
 #![no_main]
 
 mod spi_wrapper;
+mod buffer;
 
 use arrayvec::ArrayString;
-use cortex_m::delay::Delay;
+use buffer::DataBuffer;
+use cortex_m::{delay::Delay, singleton};
 use display_interface_spi::SPIInterface;
 use embedded_graphics::{
     mono_font::{ascii::FONT_7X13_BOLD, MonoTextStyle},
@@ -16,12 +18,12 @@ use embedded_graphics::{
 };
 use embedded_hal::{digital::OutputPin, spi::{Mode, Phase, Polarity}};
 use spi_wrapper::SpiWrapper;
-use rp_pico::{hal::{self, pac, Sio, Clock, Timer}, entry};
+use rp_pico::{entry, hal::{self, dma::{single_buffer, DMAExt, SingleChannel}, pac, Clock, Sio, Timer}};
 use core::fmt::Write;
 
 use panic_halt as _;
 
-use ili9341::{DisplaySize240x320, Ili9341, Orientation};
+use ili9341::{Command, DisplaySize240x320, Ili9341, Orientation};
 use fugit::RateExtU32;
 use embedded_graphics_framebuf::FrameBuf;
 
@@ -74,24 +76,17 @@ fn main() -> ! {
         mode,
     );
 
+    // Initialize DMA.
+    let dma = pac.DMA.split(&mut pac.RESETS);
+    let mut ch0 = dma.ch0;
+
     let mut timer = Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
 
-    let lcd_dc = pins.gpio2.into_push_pull_output();
-    let lcd_reset = pins.gpio1.into_push_pull_output();
+    let mut lcd_dc = pins.gpio2.into_push_pull_output();
+    let mut lcd_reset = pins.gpio1.into_push_pull_output();
 
-    let sint = SPIInterface::new(SpiWrapper{ bus: lcd_spi }, lcd_dc);
-    let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
-    let mut lcd = Ili9341::new(
-        sint,
-        lcd_reset,
-        &mut timer,
-        Orientation::Portrait,
-        DisplaySize240x320,
-    )
-    .unwrap();
-
-    let mut data = [Rgb565::CSS_DARK_BLUE; 240 * 320];
+    let mut data = DataBuffer { buffer: [Rgb565::CSS_DARK_BLUE; 240 * 320] };
 
     // Create a new character style
     let font_fg = MonoTextStyle::new(&FONT_7X13_BOLD, Rgb565::YELLOW);
@@ -100,26 +95,28 @@ fn main() -> ! {
     let mut counter = 0i32;
 
     let bg_style = PrimitiveStyleBuilder::new()
-        .fill_color(Rgb565::CSS_DARK_RED)
-        .build();
-
-
-    Rectangle::new(Point::zero(), Size::new(240, 320)).into_styled(bg_style)
-        .draw(&mut lcd)
-        .unwrap();
+    .fill_color(Rgb565::CSS_DARK_RED)
+    .build();
 
     let text = "ILI9341\nTFT Display\nExample";
 
+    let mut wrapper = SpiWrapper{ bus: lcd_spi };
+    let mut sint = SPIInterface::new(wrapper, lcd_dc);
+    let mut lcd = Ili9341::new(sint, lcd_reset, DisplaySize240x320).unwrap();
+    lcd.init(&mut timer, Orientation::Portrait).unwrap();
+    (sint, lcd_reset) = lcd.release();
+    (wrapper, lcd_dc) = sint.release();
+    let mut buffer = FrameBuf::new(data.buffer, 240, 320);
+
     loop {
         {
-            let mut buffer = FrameBuf::new(&mut data, 240, 320);
             let mut iter_text = ArrayString::<10>::new();
             let _ = writeln!(&mut iter_text, "{}", counter);
 
             let old_position = Point::new(counter % 220, counter % 300);
 
             Text::with_alignment(text, old_position, font_bg, Alignment::Left)
-            .draw(&mut buffer)
+                .draw(&mut buffer)
                 .unwrap();
 
             counter += 1;
@@ -139,8 +136,24 @@ fn main() -> ! {
                 .unwrap();
         }
 
+        let mut sint = SPIInterface::new(wrapper, lcd_dc);
+        let mut lcd = Ili9341::new(sint, lcd_reset, DisplaySize240x320).unwrap();
+        lcd.set_window(0, 0, 240, 320).unwrap();
+        lcd.command(Command::MemoryWrite, &[]).unwrap();
+        (sint, lcd_reset) = lcd.release();
+        (wrapper, lcd_dc) = sint.release();
+
         led.set_high().unwrap();
-        lcd.draw_raw_iter(0, 0, 240, 320, data.iter().map(|data| data.into_storage())).unwrap();
+
+
+        let mut bus = wrapper.bus;
+        let transfer = single_buffer::Config::new(ch0, data, bus).start();
+        (ch0, data, bus) = transfer.wait();
+        wrapper = SpiWrapper{ bus: bus };
+
         led.set_low().unwrap();
+
+
+
     }
 }

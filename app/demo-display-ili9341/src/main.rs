@@ -56,6 +56,7 @@ fn main() -> ! {
     );
 
     let mut led = pins.led.into_push_pull_output();
+    led.set_low().unwrap();
 
     // Set up our SPI pins so they can be used by the SPI driver
     let spi_mosi = pins.gpio7.into_function::<hal::gpio::FunctionSpi>();
@@ -145,15 +146,11 @@ fn main() -> ! {
 
         led.set_high().unwrap();
 
-
         let mut bus = wrapper.bus;
         let transfer = single_buffer::Config::new(ch0, data, bus).start();
         (ch0, data, bus) = transfer.wait();
         wrapper = SpiWrapper{ bus: bus };
 
         led.set_low().unwrap();
-
-
-
     }
 }

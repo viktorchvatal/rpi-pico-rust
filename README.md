@@ -12,6 +12,13 @@ My personal walk through learning Rust development on Raspberry Pi Pico, featuri
 ## Userful Resources
 
  - https://crates.io/crates/rp-pico
+
+   - examples: https://github.com/rp-rs/rp-hal-boards/tree/main/boards/rp-pico/examples
+
+ - https://crates.io/crates/rp2040-hal
+
+   - examples: https://github.com/rp-rs/rp-hal/tree/main/rp2040-hal-examples/src/bin
+
  - https://reltech.substack.com/p/getting-started-with-rust-on-a-raspberry
  - [RPi Pico printable pinout](https://drive.google.com/file/d/1v-ktJeAcibXJ5adw5aSTZiJrBMNNmzJk/view)
  - [Everything about the Raspberry Pi Pico](https://picockpit.com/raspberry-pi/everything-about-the-raspberry-pi-pico/)

@@ -1,0 +1,11 @@
+[package]
+name = "demo-panic-led"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rp2040-hal = "0.10.2"
+rp-pico = "0.9.0"
+embedded-hal = "1.0.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"

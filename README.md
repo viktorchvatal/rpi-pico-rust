@@ -31,30 +31,42 @@ with 128K RAM and 512K flash.
 
 ![photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/boards/black-pill-board-small.jpg)
 
-## Getting Started with USB loader
+## Basic Programming and Debugging
+
+### Getting Started with USB loader
 
 [Programming via USB](doc/usb-loader.md) - the easiest way to flash a program just by connecting
 RPI Pico to a USB port with BOOTSEL button active
 
 ![photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/blinky/blinky-small.gif)
 
-## Getting started with Picoprobe
+### Getting started with Picoprobe
 
 [Getting started with Picoprobe](doc/picoprobe.md) - flashing and debugging Pico using another Pico
 
 ![photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/picoprobe/rpi-picoprobe-small.jpg)
 
-## Panic LED
+### Panic LED
 
 [Indicating panic with a LED](doc/panic-led.md)
 
 TODO: Photo
 
-## SSD1306 OLED I2C Display
+## Digital Displays
+
+### LED Display With MAX7219
+
+[LED display with MAX7219 driver over SPI](doc/display-max-7219.md)
+
+TODO: Photo
+
+### SSD1306 OLED I2C Display
 
 [Connecting a small OLED display via i2c bus](doc/display-ssd1306.md)
 
 ![photo](https://raw.githubusercontent.com/viktorchvatal/rpi-pico-rust-assets/master/display-ssd1306/display-ssd1306-small.gif)
+
+## Other Inputs and Outputs
 
 ## Analog to digital converter and multicore
 

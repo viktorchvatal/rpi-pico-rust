@@ -58,21 +58,19 @@ fn main() -> ! {
     let spi_wrapper = SpiWrapper{ bus: display_spi };
     let mut display = MAX7219::from_spi_cs(1, spi_wrapper, cs).unwrap();
 
-
     let buffer = b"        Hello RP-2040        ";
     let mut shift: usize = 0;
     let mut data = [0; 8];
 
     loop {
-        let _  = led.set_low();
+        let _  = led.set_high();
         display.power_on().unwrap();
         data.copy_from_slice(&buffer[shift..(shift + 8)]);
 
         display.write_str(0, &data, 0x00).unwrap();
         display.set_intensity(0, 0x02).unwrap();
         shift = (shift + 1) % 21;
-
-        let _  = led.set_high();
+        let _  = led.set_low();
 
         delay.delay_ms(300);
     }
